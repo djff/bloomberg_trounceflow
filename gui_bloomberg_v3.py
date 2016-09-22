@@ -391,14 +391,16 @@ class Calendar(ttk.Frame):
             session.sendRequest(request)
 
             home = expanduser("~")
-            home = home + "\Desktop"
-            directory = home+"\Bloomberg_Output"
+            home = os.path.join(*[home, 'Desktop'])
+            directory = os.path.join(*[home, 'Bloomberg_Output'])
             if not os.path.exists(directory):
                 os.makedirs(directory)
 
-            resultFile = ("{0}\{1}_{2}_{3}.csv".format(directory,ticker, startDate, endDate))
-            fpath = os.path.normpath(resultFile)
-            f = open(fpath, 'w')
+            os.chdir(directory)
+
+            resultFile = ("{1}_{2}_{3}.csv".format(ticker, startDate, endDate))
+            #fpath = os.path.normpath(resultFile)
+            f = open(resultFile, 'w')
 
             while(True):
                 # We provide timeout to give the chance for Ctrl+C handling:
@@ -420,6 +422,7 @@ class Calendar(ttk.Frame):
                                 line = "{0},{1},{2},{3}\n".format(
                                     ticker, tstamp, nav, aum)
                                 f.write(line)
+                                print("************ NAV = {}, AUM = {} ***************".format(nav, aum))
 
                 if ev.eventType() == blpapi.Event.RESPONSE:
                     # Response completly received, so we could exit
