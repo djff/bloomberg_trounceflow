@@ -399,9 +399,10 @@ class Calendar(ttk.Frame):
             os.chdir(directory)
 
             resultFile = ("{1}_{2}_{3}.csv".format(ticker, startDate, endDate))
-            #fpath = os.path.normpath(resultFile)
-            f = open(resultFile, 'w')
+            fpath = os.path.normpath(resultFile)
+            f = open(fpath, 'w')
 
+            loop = True
             while(True):
                 # We provide timeout to give the chance for Ctrl+C handling:
                 ev = session.nextEvent(500)
@@ -419,10 +420,23 @@ class Calendar(ttk.Frame):
                                 nav = fieldData.getElement(1).getValueAsFloat()
                                 aum = fieldData.getElement(2).getValueAsFloat()
 
+                                # Getting the FF from the nav and aum
+
+                                if loop:
+                                    prev_nav = nav
+                                    prev_aum = aum
+                                    loop = False
+                                    continue
+                                else:
+                                    # FF formula
+                                    FF = aum - (prev_aum * (nav/prev_nav))
+                                    prev_nav = nav
+                                    prev_aum = aum
+                            
                                 line = "{0},{1},{2},{3}\n".format(
-                                    ticker, tstamp, nav, aum)
+                                    ticker, tstamp, nav, aum, FF)
                                 f.write(line)
-                                print("************ NAV = {}, AUM = {} ***************".format(nav, aum))
+                                print("************ NAV = {}, AUM = {}, FF={} ***************".format(nav, aum))
 
                 if ev.eventType() == blpapi.Event.RESPONSE:
                     # Response completly received, so we could exit
