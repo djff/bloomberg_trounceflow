@@ -18,6 +18,7 @@ import os
 import blpapi
 import threading
 from os.path import expanduser
+import psycopg2
 
 
 def get_calendar(locale, fwday):
@@ -390,6 +391,9 @@ class Calendar(ttk.Frame):
             # Send the request
             session.sendRequest(request)
 
+            print ('********  Request Sent  **********')
+
+            print('*********  Creating directory *******')
             home = expanduser("~")
             home = os.path.join(*[home, 'Desktop'])
             directory = os.path.join(*[home, 'Bloomberg_Output'])
@@ -398,9 +402,15 @@ class Calendar(ttk.Frame):
 
             os.chdir(directory)
 
-            resultFile = ("{1}_{2}_{3}.csv".format(ticker, startDate, endDate))
+            print('**********  Directory Created   *********')
+            print('**********  Creating excel file  ********')
+            resultFile = ("{0}_{1}_{2}.csv".format(ticker, startDate, endDate))
             fpath = os.path.normpath(resultFile)
             f = open(fpath, 'w')
+
+            # Creating a connection to the heroku database
+            conn = psycopg2.connect('postgres://wbjacejsvtjwga:Lx0_UnC2AZ-laWj7LzQsXDMTcc@ec2-50-19-227-171.compute-1.amazonaws.com:5432/d62acnh9mb8h6d')
+            cursor = conn.cursor()
 
             loop = True
             while(True):
@@ -421,7 +431,7 @@ class Calendar(ttk.Frame):
                                 aum = fieldData.getElement(2).getValueAsFloat()
 
                                 # Getting the FF from the nav and aum
-
+                                print('****************  Getting Data ***********************')
                                 if loop:
                                     prev_nav = nav
                                     prev_aum = aum
@@ -433,10 +443,11 @@ class Calendar(ttk.Frame):
                                     prev_nav = nav
                                     prev_aum = aum
                             
-                                line = "{0},{1},{2},{3}\n".format(
+                                line = "{0},{1},{2},{3},{4}\n".format(
                                     ticker, tstamp, nav, aum, FF)
                                 f.write(line)
-                                print("************ NAV = {}, AUM = {}, FF={} ***************".format(nav, aum))
+                                cursor.execute('insert into charts_data_dailyflows  (ticker_name, ticker_nav, ticker_aum, ticker_date) values({}, {}, {}, {})'.format(ticker, nav, aum, ticker))
+                                print("************ NAV = {}, AUM = {}, FF={} ***************".format(nav, aum, FF))
 
                 if ev.eventType() == blpapi.Event.RESPONSE:
                     # Response completly received, so we could exit
@@ -445,6 +456,15 @@ class Calendar(ttk.Frame):
         finally:
                 # Stop the session
             session.stop()
+
+            # commit changes to database
+            conn.commit()
+
+            # close connection
+            cursor.close()
+            conn.close()
+
+        print('all excel files created.')
 
 def test():
     import sys
